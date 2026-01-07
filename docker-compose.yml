@@ -1,0 +1,15 @@
+version: '3.1'
+services:
+  oracledb:
+    image: zatula/oracle-mac-m1
+    container_name: oracle
+    restart: unless-stopped
+    ports:
+      - 1521:1521
+      - 5500:5500
+    environment:
+      ORACLE_MEM: 8000
+      ORACLE_PDB: orcl
+      ORACLE_PWD: oracle
+      ORACLE_EDITION: enterprise
+      ORACLE_SID: orclcdb

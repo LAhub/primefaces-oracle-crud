@@ -1,0 +1,255 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:p="http://primefaces.org/ui">
+
+<h:head>
+    <title>Gestión de Tareas</title>
+    <style>
+        .completed-task {
+            text-decoration: line-through;
+            color: #999;
+        }
+        .overdue-task {
+            background-color: #ffebee !important;
+        }
+        .stats-panel {
+            margin-bottom: 20px;
+        }
+    </style>
+</h:head>
+
+<h:body>
+    <h:form id="taskForm">
+        <p:growl id="messages" showDetail="true" sticky="false" life="3000"/>
+
+        <p:panel header="Gestión de Tareas" style="margin-bottom: 20px;">
+
+            <!-- Estadísticas -->
+            <p:panelGrid columns="4" styleClass="stats-panel">
+                <p:outputLabel value="Total: #{taskBean.totalCount}" style="font-weight: bold;"/>
+                <p:outputLabel value="Pendientes: #{taskBean.pendingCount}" style="font-weight: bold; color: orange;"/>
+                <p:outputLabel value="Completadas: #{taskBean.completedCount}" style="font-weight: bold; color: green;"/>
+                <p:outputLabel value="Vencidas: #{taskBean.overdueCount}" style="font-weight: bold; color: red;"/>
+            </p:panelGrid>
+
+            <!-- Formulario de Nueva Tarea -->
+            <p:panelGrid columns="2" layout="grid">
+                <p:outputLabel value="Título:" for="title"/>
+                <p:inputText id="title" value="#{taskBean.task.title}"
+                             required="true" requiredMessage="El título es obligatorio"
+                             style="width: 100%;"/>
+
+                <p:outputLabel value="Descripción:" for="description"/>
+                <p:inputTextarea id="description" value="#{taskBean.task.description}"
+                                 rows="3" style="width: 100%;"/>
+
+                <p:outputLabel value="Fecha Límite:" for="dueDate"/>
+                <p:calendar id="dueDate" 
+                            value="#{taskBean.task.dueDate}"
+                            pattern="dd/MM/yyyy"
+                            mindate="#{taskBean.minDate}"
+                            showButtonBar="true"
+                            navigator="true"
+                            locale="es"
+                            placeholder="Seleccionar fecha"
+                            style="width: 100%;"/>
+            </p:panelGrid>
+
+            <p:commandButton value="Guardar"
+                             actionListener="#{taskBean.save}"
+                             update="@form"
+                             icon="pi pi-save"
+                             styleClass="ui-button-success"/>
+
+            <p:commandButton value="Limpiar"
+                             actionListener="#{taskBean.clear}"
+                             update="@form"
+                             icon="pi pi-times"
+                             styleClass="ui-button-secondary"
+                             style="margin-left: 10px;"/>
+        </p:panel>
+
+        <!-- Búsqueda y Filtros -->
+        <p:panel header="Buscar y Filtrar" style="margin-bottom: 20px;">
+            <p:panelGrid columns="4" layout="grid">
+                <p:inputText id="filter"
+                             value="#{taskBean.filter}"
+                             placeholder="Buscar por título..."
+                             style="width: 100%;">
+                    <p:ajax event="keyup"
+                            listener="#{taskBean.search}"
+                            update=":taskForm:taskTable"
+                            delay="500"/>
+                </p:inputText>
+
+                <p:commandButton value="Buscar"
+                                 actionListener="#{taskBean.search}"
+                                 update=":taskForm:taskTable :taskForm:messages"
+                                 process="@this filter"
+                                 icon="pi pi-search"/>
+
+                <p:selectOneMenu value="#{taskBean.filterType}" style="width: 100%;">
+                    <f:selectItem itemLabel="Todas" itemValue="ALL"/>
+                    <f:selectItem itemLabel="Pendientes" itemValue="PENDING"/>
+                    <f:selectItem itemLabel="Completadas" itemValue="COMPLETED"/>
+                    <f:selectItem itemLabel="Vencidas" itemValue="OVERDUE"/>
+                    <f:selectItem itemLabel="Vencen Hoy" itemValue="TODAY"/>
+                    <p:ajax listener="#{taskBean.filterByType}"
+                            update=":taskForm:taskTable :taskForm:messages"/>
+                </p:selectOneMenu>
+
+                <p:commandButton value="Resetear"
+                                 actionListener="#{taskBean.clear}"
+                                 update="@form"
+                                 process="@this"
+                                 icon="pi pi-refresh"
+                                 styleClass="ui-button-warning"/>
+            </p:panelGrid>
+        </p:panel>
+
+        <!-- Tabla de Tareas -->
+        <p:dataTable id="taskTable"
+                     value="#{taskBean.tasks}"
+                     var="task"
+                     paginator="true"
+                     rows="10"
+                     emptyMessage="No hay tareas disponibles"
+                     rowStyleClass="#{task.overdue ? 'overdue-task' : ''}"
+                     paginatorTemplate="{CurrentPageReport} {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}"
+                     rowsPerPageTemplate="5,10,15,20">
+
+            <p:column headerText="ID" sortBy="#{task.id}" style="width: 50px;">
+                <h:outputText value="#{task.id}"/>
+            </p:column>
+
+            <p:column headerText="Título" sortBy="#{task.title}">
+                <h:outputText value="#{task.title}"
+                              styleClass="#{task.completed ? 'completed-task' : ''}"/>
+                <h:outputText value=" ⚠️" rendered="#{task.overdue}" 
+                              title="Tarea vencida" style="color: red;"/>
+            </p:column>
+
+            <p:column headerText="Descripción">
+                <h:outputText value="#{task.description}">
+                </h:outputText>
+            </p:column>
+            <p:column headerText="Fecha Límite" sortBy="#{task.dueDate}" style="width: 120px;">
+                <h:outputText value="#{task.dueDate}" rendered="#{task.dueDate != null}">
+                    <f:convertDateTime pattern="dd/MM/yyyy"/>
+                </h:outputText>
+                <h:outputText value="-" rendered="#{task.dueDate == null}"/>
+            </p:column>
+
+            <p:column headerText="Estado" style="width: 120px; text-align: center;">
+                <p:tag value="#{task.completed ? 'Completada' : (task.overdue ? 'Vencida' : 'Pendiente')}"
+                       severity="#{task.completed ? 'success' : (task.overdue ? 'danger' : 'warning')}"/>
+            </p:column>
+
+            <p:column headerText="Fecha Creación" sortBy="#{task.createdDate}" style="width: 150px;">
+                <h:outputText value="#{task.createdDate}">
+                    <f:convertDateTime pattern="dd/MM/yyyy HH:mm"/>
+                </h:outputText>
+            </p:column>
+
+            <p:column headerText="Acciones" style="width: 200px; text-align: center;">
+                <p:commandButton icon="pi pi-check"
+                                 title="#{task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}"
+                                 actionListener="#{taskBean.toggleCompleted(task)}"
+                                 update=":taskForm:taskTable :taskForm:messages"
+                                 process="@this"
+                                 styleClass="#{task.completed ? 'ui-button-warning' : 'ui-button-success'}"
+                                 style="margin-right: 5px;"/>
+
+                <p:commandButton icon="pi pi-pencil"
+                                 title="Editar"
+                                 oncomplete="PF('editDialog').show()"
+                                 actionListener="#{taskBean.prepareEdit(task)}"
+                                 update=":editDialogForm"
+                                 process="@this"
+                                 styleClass="ui-button-info"
+                                 style="margin-right: 5px;"/>
+
+                <p:commandButton icon="pi pi-trash"
+                                 title="Eliminar"
+                                 actionListener="#{taskBean.delete(task)}"
+                                 update=":taskForm:taskTable :taskForm:messages"
+                                 process="@this"
+                                 styleClass="ui-button-danger">
+                    <p:confirm header="Confirmación"
+                               message="¿Está seguro de eliminar esta tarea?"
+                               icon="pi pi-exclamation-triangle"/>
+                </p:commandButton>
+            </p:column>
+        </p:dataTable>
+
+        <!-- Diálogo de Confirmación -->
+        <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+            <p:commandButton value="Sí" type="button"
+                             styleClass="ui-confirmdialog-yes"
+                             icon="pi pi-check"/>
+            <p:commandButton value="No" type="button"
+                             styleClass="ui-confirmdialog-no ui-button-secondary"
+                             icon="pi pi-times"/>
+        </p:confirmDialog>
+    </h:form>
+
+    <!-- Diálogo de Edición en un formulario separado -->
+    <h:form id="editDialogForm">
+        <p:dialog id="editDialog"
+                  header="Editar Tarea"
+                  widgetVar="editDialog"
+                  modal="true"
+                  showEffect="fade"
+                  hideEffect="fade"
+                  resizable="false"
+                  width="500">
+
+            <p:panelGrid columns="2" layout="grid" rendered="#{taskBean.selectedTask != null}">
+                <p:outputLabel value="Título:" for="editTitle"/>
+                <p:inputText id="editTitle"
+                             value="#{taskBean.selectedTask.title}"
+                             required="true"
+                             style="width: 100%;"/>
+
+                <p:outputLabel value="Descripción:" for="editDescription"/>
+                <p:inputTextarea id="editDescription"
+                                 value="#{taskBean.selectedTask.description}"
+                                 rows="5"
+                                 style="width: 100%;"/>
+
+                <p:outputLabel value="Fecha Límite:" for="editDueDate"/>
+                <p:calendar id="editDueDate"
+                            value="#{taskBean.selectedTask.dueDate}"
+                            pattern="dd/MM/yyyy"
+                            showButtonBar="true"
+                            navigator="true"
+                            locale="es"
+                            style="width: 100%;"/>
+
+                <p:outputLabel value="Completada:"/>
+                <p:selectBooleanCheckbox value="#{taskBean.selectedTask.completed}"/>
+            </p:panelGrid>
+
+            <f:facet name="footer">
+                <p:commandButton value="Actualizar"
+                                 actionListener="#{taskBean.update}"
+                                 update=":taskForm:taskTable :taskForm:messages"
+                                 oncomplete="if (!args.validationFailed) PF('editDialog').hide()"
+                                 icon="pi pi-save"
+                                 styleClass="ui-button-success"/>
+
+                <p:commandButton value="Cancelar"
+                                 actionListener="#{taskBean.cancelEdit}"
+                                 onclick="PF('editDialog').hide(); return false;"
+                                 icon="pi pi-times"
+                                 immediate="true"
+                                 styleClass="ui-button-secondary"/>
+            </f:facet>
+        </p:dialog>
+    </h:form>
+
+</h:body>
+</html>
