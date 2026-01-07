@@ -1,8 +1,0 @@
-com/xilosoft/tareas/service/UserService.class
-com/xilosoft/tareas/repository/TaskRepository.class
-com/xilosoft/tareas/controller/TaskBean.class
-com/xilosoft/tareas/service/TaskService.class
-com/xilosoft/tareas/controller/UserBean.class
-com/xilosoft/tareas/repository/UserRepository.class
-com/xilosoft/tareas/model/Task.class
-com/xilosoft/tareas/model/User.class
